@@ -1,0 +1,22 @@
+plugins:
+  database-sqlite:
+    path: /app/data/koishi.db
+  help: {}
+  ./dedup: {}
+  ./custom-shortcuts: {}
+  ./message-rank: {}
+  adapter-onebot:
+    selfId: '3587847603'
+    protocol: ws
+    endpoint: ws://napcat:5600/onebot
+  tsugu-bangdream-bot:
+    backendUrl: http://backend:3000
+    bandoriStationToken: FIVW1pTKfpnH
+    useEasyBG: false
+    compress: true
+    noSpace: true
+    reply: false
+    at: false
+
+port: 5170
+host: 0.0.0.0

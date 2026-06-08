@@ -1,0 +1,464 @@
+import { Canvas, Image } from 'skia-canvas';
+import { drawRoundedRectWithText } from '@/image/drawRect';
+import { drawText, drawTextWithImages, releaseCanvas, setFontStyleArgs } from '@/image/text';
+import { drawDottedLine } from '@/image/dottedLine'
+import { Server, getServerByPriority, getIcon } from '@/types/Server'
+import { stackImageHorizontal } from '@/components/utils';
+import { globalDefaultServer } from '@/config';
+import { setFontStyle } from '@/image/text';
+import { getFontCanvasCtxFromPool } from '@/image/utils';
+
+
+//表格用默认虚线
+export const line: Canvas = drawDottedLine({
+    width: 800,
+    height: 30,
+    startX: 5,
+    startY: 15,
+    endX: 795,
+    endY: 15,
+    radius: 2,
+    gap: 10,
+    color: "#a8a8a8"
+})
+
+interface ListOptions {
+    key?: string;
+    text?: string;
+    content?: Array<string | Canvas | Image>
+    textSize?: number;
+    lineHeight?: number;
+    spacing?: number;
+    lineSpacing?: number;
+    color?: string;
+    maxWidth?: number;
+    RoundedRectColor?:string;
+    RoundedRectTextColor?:string;
+    align?: "top" | "bottom" | "center"
+}
+
+
+//文字使用textSize，不缩放图片
+export function drawListTextWithImages({
+    key,
+    content,
+    textSize = 40,
+    spacing = textSize / 3,
+    lineSpacing = 20,
+    color = '#505050',
+    maxWidth = 800,
+    align = "center"
+}: ListOptions): Canvas {
+    const keyImage = drawRoundedRectWithText({
+        text: key,
+        textSize: 30,
+    });
+
+    //var textImage: Canvas = reCanvas
+    var Width = 20, Height = 0
+    {
+        //const ctx = getFontCanvasCtxFromPool(setFontStyleArgs(textSize, 'old'));
+        //setFontStyle(ctx, textSize, 'old')
+        for (const element of content) {
+            if (typeof element === "string") {
+                // Width += ctx.measureText(element).width
+                Height = Math.max(Height, textSize)
+            }
+            else {
+                // Width += element.width
+                Height = Math.max(Height, element.height)
+            }
+            // Width += spacing
+        }
+        // Width -= spacing
+    }
+    var textImage = new Canvas(maxWidth, Height + lineSpacing)
+    {
+        const ctx = textImage.getContext('2d')
+        ctx.textBaseline = 'alphabetic'
+        setFontStyle(ctx, textSize, 'old');
+        ctx.fillStyle = color;
+        var x = 20
+        for (const element of content) {
+            var y = lineSpacing / 2, tempHeight = typeof element === "string" ? textSize / 3 * 4 : element.height
+            if (align == 'top')
+                y += 0
+            else if (align == 'bottom')
+                y += Height - tempHeight
+            else 
+                y += (Height - tempHeight) / 2
+            if (typeof element === "string") {
+                ctx.fillText(element, x, y + textSize)
+                x += ctx.measureText(element).width
+            }
+            else {
+                ctx.drawImage(element, x, y)
+                x += element.width
+            }
+            x += spacing
+        }
+    }
+    if (key == undefined) {
+        return textImage
+    }
+    var ymax = textImage.height + keyImage.height + 10;
+    const canvas = new Canvas(maxWidth, ymax);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(keyImage, 0, 0);
+    if(textImage.height != 0){
+        ctx.drawImage(textImage, 0, keyImage.height + 10);
+    }
+    return canvas;
+}
+
+
+//画表格中的一行
+export async function drawList({
+    key,
+    text,
+    content,
+    textSize = 40,
+    lineHeight = textSize * 1.5,
+    spacing = textSize / 3,
+    color = '#505050',
+    maxWidth = 800,
+    RoundedRectColor = '#5b5b5b',
+    RoundedRectTextColor = "#ffffff",
+
+}: ListOptions): Promise<Canvas> {
+    const xmax = maxWidth - 40
+    const keyImage = drawRoundedRectWithText({
+        text: key,
+        textSize: 30,
+        color:RoundedRectColor,
+        textColor:RoundedRectTextColor
+    });
+    var isNeedToRelease = false
+    var textImage: Canvas
+    if (typeof text == "string") {
+        textImage = await drawText({ text, maxWidth: xmax, lineHeight });
+        isNeedToRelease = true
+    }
+    else if (content != undefined) {
+        textImage = drawTextWithImages({
+            content,
+            maxWidth: xmax,
+            lineHeight,
+            textSize,
+            spacing,
+            color
+        });
+        isNeedToRelease = true
+    }
+    else {
+        textImage = new Canvas(0, 0)
+    }
+    if (key == undefined) {
+        return stackImageHorizontal([new Canvas(20, 1), textImage])
+    }
+    var ymax = textImage.height + keyImage.height + 10;
+    const canvas = new Canvas(maxWidth, ymax);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(keyImage, 0, 0);
+    if(textImage.height != 0){
+        ctx.drawImage(textImage, 20, keyImage.height + 10);
+    }
+    return canvas;
+}
+
+interface tipsOptions {
+    text?: string;
+    content?: Array<string | Canvas | Image>
+    textSize?: number;
+    lineHeight?: number;
+    spacing?: number;
+}
+export async function drawTipsInList({
+    text,
+    content,
+    textSize = 30,
+    lineHeight = textSize * 1.5,
+    spacing = textSize / 3
+}: tipsOptions) {
+    const xmax = 760
+    var textImage: Canvas
+    if (typeof text == "string") {
+        textImage = await drawText({ text, textSize, maxWidth: xmax, lineHeight });
+        
+    }
+    else if (content != undefined) {
+        textImage = drawTextWithImages({
+            textSize,
+            content,
+            maxWidth: xmax,
+            lineHeight,
+            spacing
+        });
+    }
+    else {
+        textImage = null
+    }
+    const canvas = new Canvas(800, (textImage.height===null?1:textImage.height) + 10);
+    //const canvas = new Canvas(800, 1 + 10);
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#f1f1f1'
+    ctx.fillRect(0, 10, 800, textImage.height);
+    ctx.drawImage(textImage, 20, 10);
+
+
+    return canvas;
+}
+
+export async function drawListByServerList(content: Array<string | null>, key?: string, serverList: Server[] = globalDefaultServer, maxWidth = 800) {
+    var tempcontent: Array<string | Image | Canvas> = []
+    
+    // 获取每个服务器的内容对应关系
+    const contentMap = new Map<string, Server[]>()
+
+    // 分组服务器，根据相同的内容将服务器归类
+    for (let i = 0; i < serverList.length; i++) {
+        const tempServer = serverList[i];
+        const serverContent = content[tempServer];
+        if (serverContent == null) {
+            continue;
+        }
+        
+        if (!contentMap.has(serverContent)) {
+            contentMap.set(serverContent, []);
+        }
+        contentMap.get(serverContent)?.push(tempServer);
+    }
+
+    // 遍历内容分组
+    for (const [serverContent, servers] of contentMap) {
+        if (servers.length > 0) {
+            // 对于同一组内容，只需要绘制一次图标和内容
+            for (let i = 0; i < servers.length; i++) {
+                tempcontent.push(await getIcon(servers[i]));
+            }
+            // 添加对应的内容
+            tempcontent.push(serverContent);
+            tempcontent.push('\n');
+        }
+    }
+
+    // 如果所有服务器内容都为空，选择优先级最高的服务器
+    if (tempcontent.length == 0) {
+        const tempServer = getServerByPriority(content, serverList);
+        //console.log(content)
+        tempcontent.push(await getIcon(tempServer));
+       
+        tempcontent.push(content[tempServer]);
+        tempcontent.push('\n');
+    }
+
+    // 去掉最后一个换行符
+    tempcontent.pop();
+
+    var canvas = drawList({
+        key: key,
+        content: tempcontent,
+        maxWidth
+    });
+
+    return canvas;
+}
+
+
+// 横向组合：宽度为所有子图宽度相加，高度为最高图的高度
+export function drawListMergeMin(
+    imageList: Array<Canvas | Image>,
+    drawLine: boolean = false,
+    align: "top" | "bottom" | "center" = "top"
+): Canvas {
+    // 计算总宽度与最大高度
+    let totalWidth = 0;
+    let maxHeight = 0;
+
+    for (const element of imageList) {
+        if (element) {
+            totalWidth += element.width;
+            if (element.height > maxHeight) maxHeight = element.height;
+        }
+    }
+
+    // 生成画布
+    const canvas = new Canvas(totalWidth, maxHeight);
+    const ctx = canvas.getContext("2d");
+
+    // 分割线（保持你的原逻辑）
+    const line: Canvas = drawDottedLine({
+        width: 10,
+        height: canvas.height,
+        startX: 5,
+        startY: 5,
+        endX: 5,
+        endY: canvas.height - 5,
+        radius: 2,
+        gap: 10,
+        color: "#a8a8a8"
+    });
+
+    // 绘制
+    let x = 0;
+
+    for (let i = 0; i < imageList.length; i++) {
+        const element = imageList[i];
+        if (!element) continue;
+
+        let y = 0;
+        if (align === "bottom")
+            y = maxHeight - element.height;
+        else if (align === "center")
+            y = (maxHeight - element.height) / 2;
+
+        ctx.drawImage(element, x, y);
+
+        // 分隔线：在两项之间
+        if (drawLine && i > 0) {
+            ctx.drawImage(line, x - 5, 0);
+        }
+
+        // 移动 x
+        x += element.width;
+    }
+
+    return canvas;
+}
+
+
+
+//横向组合较短list，高度为最高的list，宽度平分
+export function drawListMerge(imageList: Array<Canvas | Image>, maxWidth: number = 800, drawLine: boolean = false, align: "top" | "bottom" | "center" = "top"): Canvas {
+    var maxHeight = 0
+    for (let i = 0; i < imageList.length; i++) {
+        const element = imageList[i];
+        if (element && element.height > maxHeight) {
+            maxHeight = element.height
+        }
+    }
+    var canvas = new Canvas(maxWidth, maxHeight)
+    var ctx = canvas.getContext('2d')
+    var x = 0
+    const line: Canvas = drawDottedLine({
+        width: 10,
+        height: canvas.height,
+        startX: 5,
+        startY: 5,
+        endX: 5,
+        endY: canvas.height - 5,
+        radius: 2,
+        gap: 10,
+        color: "#a8a8a8"
+    })
+    for (let i = 0; i < imageList.length; i++) {
+        const element = imageList[i];
+        if (element) {
+            var y
+            if (align == "top")
+                y = 0
+            else if (align == "bottom")
+                y = maxHeight - element.height
+            else 
+                y = (maxHeight - element.height) / 2
+            ctx.drawImage(element, x, y)
+            if (drawLine && i > 0) {
+                ctx.drawImage(line, x - 5, 0)
+            }
+        }
+        x += maxWidth / imageList.length
+    }
+    return canvas
+}
+
+//横向组合image/canvas array，居中，超过宽度则换行
+export function drawImageListCenter(imageList: Array<Canvas | Image>, maxWidth = 800): Canvas {
+    interface imageLine {
+        imageList: Array<Canvas | Image>,
+        width: number,
+        height: number
+    }
+    var lineList: Array<imageLine> = []
+    let tempWidth = 0
+    let tempHeight = 0
+    let tempImageList: Array<Canvas | Image> = []
+    //换行函数
+    function newLine() {
+        lineList.push({
+            imageList: tempImageList,
+            width: tempWidth,
+            height: tempHeight
+        })
+        tempWidth = 0
+        tempHeight = 0
+        tempImageList = []
+    }
+    if (imageList.length == 0) {
+        return new Canvas(1, 10)
+    }
+    //遍历imageList，计算每一行的宽度，高度，imageList
+    for (let i = 0; i < imageList.length; i++) {
+        const element = imageList[i];
+        if (element.width > maxWidth) {
+            newLine()
+            tempImageList.push(element)
+            continue
+        }
+        if (tempWidth + element.width > maxWidth) {
+            newLine()
+        }
+        tempWidth += element.width
+        if (element.height > tempHeight) {
+            tempHeight = element.height
+        }
+        tempImageList.push(element)
+    }
+    if (tempImageList.length > 0) {//最后一行
+        newLine()
+    }
+    //计算总高度，生成canvas
+    var Height = 0
+    for (let i = 0; i < lineList.length; i++) {
+        const element = lineList[i];
+        Height += element.height
+    }
+    var canvas = new Canvas(maxWidth, Height)
+    var ctx = canvas.getContext('2d')
+    //画每一行
+    const middleWidth = maxWidth / 2
+    var y = 0
+    for (let i = 0; i < lineList.length; i++) {
+        const element = lineList[i];
+        var x = middleWidth - element.width / 2
+        for (let j = 0; j < element.imageList.length; j++) {
+            const image = element.imageList[j];
+            ctx.drawImage(image, x, y)
+            x += image.width
+        }
+        y += element.height
+    }
+    return canvas
+}
+
+//画左侧有竖线的排版，用于画block时展示数据
+export function drawListWithLine(textImageList: Array<Canvas | Image>): Canvas {
+    var x = 10
+    var y = 10
+    var height = 0
+    for (let i = 0; i < textImageList.length; i++) {
+        const element = textImageList[i];
+        height += element.height
+    }
+    var canvas = new Canvas(800, height + 10)
+    var ctx = canvas.getContext('2d')
+    ctx.fillStyle = '#a8a8a8'
+    ctx.fillRect(10, 10, 5, height + 20)
+    for (let i = 0; i < textImageList.length; i++) {
+        const element = textImageList[i];
+        ctx.drawImage(element, x, y)
+        y += element.height
+    }
+    return canvas
+}
+
+
