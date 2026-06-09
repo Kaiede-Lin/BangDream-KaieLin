@@ -5,13 +5,19 @@ plugins:
   ./dedup: {}
   ./custom-shortcuts: {}
   ./message-rank: {}
+  ./jrlp: {}
+  ./food: {}
+  ./pixiv: {}
   adapter-onebot:
     selfId: '3587847603'
     protocol: ws
     endpoint: ws://napcat:5600/onebot
+    retryTimes: 20
+    retryInterval: 3000
+    retryLazy: 15000
+    keepAlive: true
   tsugu-bangdream-bot:
     backendUrl: http://backend:3000
-    bandoriStationToken: FIVW1pTKfpnH
     useEasyBG: false
     compress: true
     noSpace: true

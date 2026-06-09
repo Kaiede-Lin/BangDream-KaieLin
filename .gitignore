@@ -10,10 +10,15 @@ backend/src/teamBuilder/*.pdb
 backend/src/teamBuilder/*.obj
 koishi/data/
 napcat/data/
+napcat/qqdata/
 napcat/config/*.json
+napcat/cache/
 *.log
 .DS_Store
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+.docker-config/
+.env
+

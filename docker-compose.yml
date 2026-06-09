@@ -1,27 +1,22 @@
-
 services:
-  # ==========================================
-  # NapCatQQ - QQ 登录 & 消息收发
-  # ==========================================
   napcat:
     image: mlikiowa/napcat-docker:latest
     container_name: tsugu-napcat
     restart: unless-stopped
     ports:
-      - "5600:5600"    # 保留未使用（之前是 Satori）
-      - "6099:6099"    # Web UI
+      - "5600:5600"
+      - "6099:6099"
     volumes:
-      - ./napcat/config/onebot11_3587847603.json:/app/napcat/config/onebot11_3587847603.json
-      - ./napcat/data:/app/data              # 持久化数据
+      - ./napcat/config:/app/napcat/config
+      - ./napcat/qqdata:/app/.config/QQ
+      - ./napcat/data:/app/data
     environment:
+      - NAPCAT_QUICK_ACCOUNT=3587847603
       - TZ=Asia/Shanghai
     cap_add:
       - NET_ADMIN
       - NET_RAW
 
-  # ==========================================
-  # Tsugu 后端 - 图片生成 & 数据查询
-  # ==========================================
   backend:
     build: ./backend
     container_name: tsugu-backend
@@ -32,15 +27,12 @@ services:
       - LOCAL_DB=false
       - BACKEND_PORT=3000
       - USE_BANDORISTATION=true
-      - BANDORI_STATION_TOKEN=FIVW1pTKfpnH
-      - BANDORI_STATION_SOURCE=沐凛
+      - BANDORI_STATION_TOKEN=${BANDORI_STATION_TOKEN}
+      - BANDORI_STATION_SOURCE=${BANDORI_STATION_SOURCE:-沐凛}
       - TZ=Asia/Shanghai
     volumes:
       - backend_cache:/app/cache
 
-  # ==========================================
-  # Koishi Bot - 指令解析 & 消息处理
-  # ==========================================
   koishi:
     build: ./koishi
     container_name: tsugu-koishi
@@ -48,12 +40,24 @@ services:
     ports:
       - "5170:5170"
     volumes:
-      - ./koishi/data:/app/data             # 持久化 koishi.db
+      - ./koishi/data:/app/data
+      - ./backend/config:/app/backend-config:ro
+      - ./koishi/koishi.yml:/app/koishi.yml:ro
+      - ./koishi/custom-shortcuts.js:/app/custom-shortcuts.js:ro
+      - ./koishi/message-rank.js:/app/message-rank.js:ro
+      - ./koishi/dedup.js:/app/dedup.js:ro
+      - ./koishi/jrlp.js:/app/jrlp.js:ro
+      - ./koishi/food.js:/app/food.js:ro
+      - ./koishi/pixiv.js:/app/pixiv.js:ro
     depends_on:
-      - backend
+      backend:
+        condition: service_started
+      napcat:
+        condition: service_started
     environment:
       - USE_BANDORISTATION=true
-      - BANDORI_STATION_SOURCE=沐凛
+      - BANDORI_STATION_TOKEN=${BANDORI_STATION_TOKEN}
+      - BANDORI_STATION_SOURCE=${BANDORI_STATION_SOURCE:-沐凛}
       - TZ=Asia/Shanghai
 
 volumes:

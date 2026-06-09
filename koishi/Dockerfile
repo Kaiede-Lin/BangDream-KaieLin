@@ -24,7 +24,7 @@ RUN npm install koishi@4 \
     @koishijs/plugin-database-sqlite \
     @koishijs/plugin-help \
     koishi-plugin-tsugu-bangdream-bot \
-    canvas axios 2>&1
+    canvas axios svg2img 2>&1
 
 # 创建 data 目录
 RUN mkdir -p /app/data
@@ -53,10 +53,13 @@ COPY koishi.yml ./
 COPY custom-shortcuts.js ./
 COPY message-rank.js ./
 COPY dedup.js ./
+COPY jrlp.js ./
+COPY food.js ./
+COPY pixiv.js ./
 
 # 复制中文字体（用于发言排行图片生成）
 COPY fonts/ /app/fonts/
 
 EXPOSE 5170
 
-CMD ["npx", "koishi", "start"]
+CMD ["node", "node_modules/koishi/bin.js", "start"]
