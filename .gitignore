@@ -8,7 +8,8 @@ backend/src/teamBuilder/out/
 backend/src/teamBuilder/*.dll
 backend/src/teamBuilder/*.pdb
 backend/src/teamBuilder/*.obj
-koishi/data/
+koishi/data/koishi.db
+koishi/data/koishi.db-journal
 napcat/data/
 napcat/qqdata/
 napcat/config/*.json
