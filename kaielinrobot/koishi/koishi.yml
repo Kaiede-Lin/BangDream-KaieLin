@@ -1,0 +1,36 @@
+plugins:
+  database-sqlite:
+    path: /app/data/koishi.db
+  help: {}
+  ./dedup: {}
+  ./custom-shortcuts: {}
+  ./message-rank: {}
+  ./emoji-like: {}
+  ./yt-resolver:
+    resolverUrl: http://yt-resolver:8088
+    cacheDir: /yt-cache
+    resolveTimeoutMs: 1800000
+    pollIntervalMs: 2000
+    groupCooldownMs: 300000
+    duplicateTtlMs: 600000
+    keepMediaAfterSend: false
+  ./meme-generator:
+    baseUrl: http://meme-generator:2233
+    pageSize: 12
+    keysTtl: 600000
+    infoTtl: 1800000
+  adapter-onebot:
+    selfId: '3587847603'
+    protocol: ws
+    endpoint: ws://napcat:5600/onebot
+  tsugu-bangdream-bot:
+    backendUrl: http://backend:3000
+    bandoriStationToken: FIVW1pTKfpnH
+    useEasyBG: false
+    compress: true
+    noSpace: true
+    reply: false
+    at: false
+
+port: 5170
+host: 0.0.0.0

@@ -1,0 +1,105 @@
+﻿services:
+  # ==========================================
+  # NapCatQQ - QQ 登录 & 消息收发
+  # ==========================================
+  napcat:
+    image: mlikiowa/napcat-docker:latest
+    container_name: tsugu-napcat
+    restart: unless-stopped
+    volumes:
+      - ./napcat/config/onebot11_3587847603.json:/app/napcat/config/onebot11_3587847603.json
+      - ./napcat/data:/app/data              # 持久化数据
+      - yt_cache:/yt-cache
+    environment:
+      - TZ=Asia/Shanghai
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+
+  # ==========================================
+  # Tsugu 后端 - 图片生成 & 数据查询
+  # ==========================================
+  backend:
+    build: ./backend
+    container_name: tsugu-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - LOCAL_DB=false
+      - BACKEND_PORT=3000
+      - USE_BANDORISTATION=true
+      - BANDORI_STATION_TOKEN=FIVW1pTKfpnH
+      - BANDORI_STATION_SOURCE=娌愬嚊
+      - TZ=Asia/Shanghai
+    volumes:
+      - backend_cache:/app/cache
+
+  # ==========================================
+  # Meme Generator - 独立表情包生成服务
+  # ==========================================
+  meme-generator:
+    build:
+      context: ../meme-generator-0.1.14
+    container_name: tsugu-meme-generator
+    restart: unless-stopped
+    ports:
+      - "2233:2233"
+    environment:
+      - TZ=Asia/Shanghai
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:2233/meme/version', timeout=3).read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ==========================================
+  # yt-resolver - 视频解析 & 完整视频转码
+  # ==========================================
+  yt-resolver:
+    build:
+      context: ./yt-resolver
+    container_name: tsugu-yt-resolver
+    restart: unless-stopped
+    ports:
+      - "8088:8088"
+    environment:
+      - PORT=8088
+      - YT_CACHE_DIR=/yt-cache
+      - YT_DLP_SOURCE=/opt/yt-dlp-master
+      - YT_RESOLVE_TIMEOUT_MS=1800000
+      - YT_RESOLVE_POLL_INTERVAL_MS=2000
+      - YT_GROUP_COOLDOWN_MS=300000
+      - YT_DUPLICATE_TTL_MS=600000
+      - YT_KEEP_DONE_MEDIA_SECONDS=600
+      - YT_MAX_CACHE_BYTES=2147483648
+      - YT_KEEP_MEDIA_AFTER_SEND=false
+      - YT_COOKIES_FILE=/yt-cache/cookies.txt
+      - TZ=Asia/Shanghai
+    volumes:
+      - yt_cache:/yt-cache
+      - ../yt-dlp-master:/opt/yt-dlp-master:ro
+
+  # ==========================================
+  # Koishi Bot - 指令解析 & 消息处理
+  # ==========================================
+  koishi:
+    build: ./koishi
+    container_name: tsugu-koishi
+    restart: unless-stopped
+    volumes:
+      - ./koishi/data:/app/data             # 持久化 koishi.db
+      - yt_cache:/yt-cache
+    depends_on:
+      - backend
+      - meme-generator
+      - yt-resolver
+    environment:
+      - USE_BANDORISTATION=true
+      - BANDORI_STATION_SOURCE=娌愬嚊
+      - TZ=Asia/Shanghai
+
+volumes:
+  backend_cache:
+  yt_cache:
